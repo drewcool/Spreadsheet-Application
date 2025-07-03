@@ -38,5 +38,5 @@ The goal was to build a **static, front-end-only React application** that:
 ### Clone the repository
 
 ```bash
-git clone https://github.com/your-username/react-spreadsheet.git
+git clone https://github.com/drewcool/Spreadsheet-Application.git
 cd react-spreadsheet
