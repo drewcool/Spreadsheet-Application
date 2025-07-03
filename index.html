@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spreadsheet Application</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Work Sans', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Custom styles that might not be covered by Tailwind */
+        .notification-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background-color: #4B6A4F;
+            color: white;
+            font-size: 10px;
+            border: 2px solid white;
+        }
+        
+        .table-cell {
+            border-bottom: 1px solid #EEEEEE;
+            border-right: 1px solid #EEEEEE;
+        }
+        
+        .status-in-process {
+            background-color: #FFF3D6;
+            color: #84640A;
+        }
+        
+        .status-need-to-start {
+            background-color: #E2E8F0;
+            color: #475569;
+        }
+        
+        .status-complete {
+            background-color: #D2F2E2;
+            color: #0A6D3C;
+        }
+        
+        .status-blocked {
+            background-color: #FFE1DD;
+            color: #C12119;
+        }
+        
+        .priority-high {
+            color: #EF4C43;
+        }
+        
+        .priority-medium {
+            color: #C1920F;
+        }
+        
+        .priority-low {
+            color: #1A8CFF;
+        }
+        
+        .view-active {
+            background-color: #E8F0E9;
+            border-top: 2px solid #4B6A4F;
+            font-weight: 600;
+            color: #3E5741;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel" data-type="module">
+        // TypeScript interface definitions (as JSDoc comments for runtime type checking)
+        /**
+         * @typedef {Object} JobRequest
+         * @property {string} id - Unique identifier for the job
+         * @property {string} title - Job request title
+         * @property {string} submittedDate - Date when the job was submitted
+         * @property {'In-process' | 'Need to start' | 'Complete' | 'Blocked'} status - Current status of the job
+         * @property {string} submitter - Name of the person who submitted the job
+         * @property {string} url - URL for the job
+         * @property {string} assignedTo - Person assigned to the job
+         * @property {'High' | 'Medium' | 'Low'} priority - Priority level of the job
+         * @property {string} dueDate - Due date for the job
+         * @property {string} estimatedValue - Estimated value of the job
+         */
+         
+        // React components
+        const App = () => {
+            /** @type {[JobRequest[], React.Dispatch<React.SetStateAction<JobRequest[]>>]} */
+            const [jobs, setJobs] = React.useState([
+                {
+                    id: '1',
+                    title: 'Launch social media campaign for product XYZ',
+                    submittedDate: '15-11-2024',
+                    status: 'In-process',
+                    submitter: 'Aisha Patel',
+                    url: 'www.aishapatel.com',
+                    assignedTo: 'Sophie Choudhury',
+                    priority: 'Medium',
+                    dueDate: '20-11-2024',
+                    estimatedValue: '6,200,000'
+                },
+                {
+                    id: '2',
+                    title: 'Update press kit for company redesign',
+                    submittedDate: '28-10-2024',
+                    status: 'Need to start',
+                    submitter: 'Irfan Khan',
+                    url: 'www.irfankhanportfolio.com',
+                    assignedTo: 'Tejas Pandey',
+                    priority: 'High',
+                    dueDate: '30-10-2024',
+                    estimatedValue: '3,500,000'
+                },
+                {
+                    id: '3',
+                    title: 'Finalize user testing feedback for app update',
+                    submittedDate: '05-12-2024',
+                    status: 'In-process',
+                    submitter: 'Mark Johnson',
+                    url: 'www.markjohnsondesigns.com',
+                    assignedTo: 'Rachel Lee',
+                    priority: 'Medium',
+                    dueDate: '10-12-2024',
+                    estimatedValue: '4,750,000'
+                },
+                {
+                    id: '4',
+                    title: 'Design new features for the website',
+                    submittedDate: '10-01-2025',
+                    status: 'Complete',
+                    submitter: 'Emily Green',
+                    url: 'www.emilygreenart.com',
+                    assignedTo: 'Tom Wright',
+                    priority: 'Low',
+                    dueDate: '15-01-2025',
+                    estimatedValue: '5,900,000'
+                },
+                {
+                    id: '5',
+                    title: 'Prepare financial report for Q4',
+                    submittedDate: '25-01-2025',
+                    status: 'Blocked',
+                    submitter: 'Jessica Brown',
+                    url: 'www.jessicabrowncreative.com',
+                    assignedTo: 'Kevin Smith',
+                    priority: 'Low',
+                    dueDate: '30-01-2025',
+                    estimatedValue: '2,800,000'
+                }
+            ]);
+            
+            const [view, setView] = React.useState('All Orders');
+            const [searchTerm, setSearchTerm] = React.useState('');
+            const [showFields, setShowFields] = React.useState(true);
+            const [sortColumn, setSortColumn] = React.useState(null);
+            const [sortDirection, setSortDirection] = React.useState('asc');
+            const [filterStatus, setFilterStatus] = React.useState(null);
+            
+            // Filter and sort jobs
+            const filteredJobs = React.useMemo(() => {
+                let result = [...jobs];
+                
+                // Apply view filter
+                if (view === 'Pending') {
+                    result = result.filter(job => job.status === 'Need to start' || job.status === 'In-process');
+                } else if (view === 'Reviewed') {
+                    result = result.filter(job => job.status === 'Complete');
+                } else if (view === 'Arrived') {
+                    result = result.filter(job => job.status === 'Blocked');
+                }
+                
+                // Apply status filter
+                if (filterStatus) {
+                    result = result.filter(job => job.status === filterStatus);
+                }
+                
+                // Apply search filter
+                if (searchTerm) {
+                    const lowerSearchTerm = searchTerm.toLowerCase();
+                    result = result.filter(job => 
+                        job.title.toLowerCase().includes(lowerSearchTerm) ||
+                        job.submitter.toLowerCase().includes(lowerSearchTerm) ||
+                        job.url.toLowerCase().includes(lowerSearchTerm) ||
+                        job.assignedTo.toLowerCase().includes(lowerSearchTerm)
+                    );
+                }
+                
+                // Apply sorting
+                if (sortColumn) {
+                    result.sort((a, b) => {
+                        const aValue = a[sortColumn];
+                        const bValue = b[sortColumn];
+                        
+                        if (sortDirection === 'asc') {
+                            return aValue > bValue ? 1 : -1;
+                        } else {
+                            return aValue < bValue ? 1 : -1;
+                        }
+                    });
+                }
+                
+                return result;
+            }, [jobs, view, searchTerm, sortColumn, sortDirection, filterStatus]);
+            
+            const handleSort = (column) => {
+                if (sortColumn === column) {
+                    setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                } else {
+                    setSortColumn(column);
+                    setSortDirection('asc');
+                }
+            };
+            
+            const handleFilter = (status) => {
+                setFilterStatus(status === filterStatus ? null : status);
+            };
+            
+            const handleHideFields = () => {
+                setShowFields(!showFields);
+            };
+            
+            const handleImport = () => {
+                alert('Import functionality would be implemented here');
+            };
+            
+            const handleExport = () => {
+                alert('Export functionality would be implemented here');
+            };
+            
+            const handleShare = () => {
+                alert('Share functionality would be implemented here');
+            };
+            
+            const handleNewAction = () => {
+                const newJob = {
+                    id: (jobs.length + 1).toString(),
+                    title: 'New Job Request',
+                    submittedDate: new Date().toLocaleDateString('en-GB'),
+                    status: 'Need to start',
+                    submitter: 'John Doe',
+                    url: 'www.example.com',
+                    assignedTo: 'Unassigned',
+                    priority: 'Medium',
+                    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB'),
+                    estimatedValue: '0'
+                };
+                setJobs([...jobs, newJob]);
+                alert('New job request added');
+            };
+            
+            return (
+                <div className="bg-[#F8FAFC] min-h-screen flex flex-col">
+                    <TopBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+                    <ToolBar 
+                        showFields={showFields} 
+                        onHideFields={handleHideFields} 
+                        onSort={() => handleSort('title')}
+                        onFilter={() => handleFilter('In-process')}
+                        onImport={handleImport}
+                        onExport={handleExport}
+                        onShare={handleShare}
+                        onNewAction={handleNewAction}
+                    />
+                    <ViewTabs activeView={view} setView={setView} />
+                    <SpreadsheetTable 
+                        jobs={filteredJobs}
+                        showFields={showFields}
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                    />
+                </div>
+            );
+        };
+        
+        const TopBar = ({ searchTerm, setSearchTerm }) => {
+            return (
+                <div className="flex justify-between items-center p-2 px-4 border-b border-[#EEEEEE] bg-white">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center">
+                            <img src="assets/images/panel-shape.svg" alt="Panel" className="h-6 w-6" />
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <span className="text-[#AFAFAF] text-sm font-medium">Workspace</span>
+                            <img src="assets/images/chevron.svg" alt="Chevron" className="h-4 w-4" />
+                            <span className="text-[#AFAFAF] text-sm font-medium">Folder 2</span>
+                            <img src="assets/images/chevron.svg" alt="Chevron" className="h-4 w-4" />
+                            <span className="text-[#121212] text-sm font-medium">Spreadsheet 3</span>
+                            <div className="p-1 rounded hover:bg-gray-100">
+                                <img src="assets/images/more.svg" alt="More options" className="h-4 w-4" />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="bg-[#F6F6F6] flex items-center gap-2 p-3 rounded-md">
+                            <img src="assets/images/search.svg" alt="Search" className="h-4 w-4" />
+                            <input 
+                                type="text" 
+                                placeholder="Search within sheet" 
+                                className="bg-transparent text-xs outline-none w-40 text-[#757575]"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <div className="p-2 rounded-lg relative hover:bg-gray-100">
+                            <img src="assets/images/alert.svg" alt="Notifications" className="h-5 w-5" />
+                            <span className="notification-badge">2</span>
+                        </div>
+                        <div className="flex items-center gap-2 p-1.5 px-3 rounded-lg hover:bg-gray-100">
+                            <div className="w-6 h-6 rounded-full overflow-hidden">
+                                <img src="https://public.youware.com/users-website-assets/prod/06acf9f5-9a01-4377-88b5-2ba90dd293e7/b2703f1289214f249a2a5b019ac061fa.jpg" alt="Profile" className="w-full h-full object-cover" />
+                            </div>
+                            <div className="flex flex-col -gap-0.5">
+                                <span className="text-xs text-[#121212]">John Doe</span>
+                                <span className="text-[10px] text-[#757575]">john.doe@companyname.com</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        const ToolBar = ({ 
+            showFields, 
+            onHideFields, 
+            onSort, 
+            onFilter, 
+            onImport, 
+            onExport, 
+            onShare, 
+            onNewAction 
+        }) => {
+            return (
+                <div className="flex justify-between items-center py-1.5 px-2 border-b border-[#EEEEEE] bg-white">
+                    <div className="flex items-center">
+                        <div className="p-2 rounded hover:bg-gray-100 flex items-center gap-1">
+                            <span className="text-sm text-[#121212]">Tool bar</span>
+                            <img src="assets/images/chevron-double.svg" alt="Expand" className="h-4 w-4" />
+                        </div>
+                        <div className="w-px h-6 bg-[#EEEEEE] mx-2"></div>
+                        <div className="flex items-center gap-2">
+                            <button 
+                                className="flex items-center gap-1 py-2 px-2 text-sm text-[#121212] rounded hover:bg-gray-100"
+                                onClick={onHideFields}
+                            >
+                                <img src="assets/images/eye.svg" alt="Hide fields" className="h-4 w-4" />
+                                <span>{showFields ? 'Hide fields' : 'Show fields'}</span>
+                            </button>
+                            <button 
+                                className="flex items-center gap-1 py-2 px-2 text-sm text-[#121212] rounded hover:bg-gray-100"
+                                onClick={onSort}
+                            >
+                                <img src="assets/images/arrow-sort.svg" alt="Sort" className="h-4 w-4" />
+                                <span>Sort</span>
+                            </button>
+                            <button 
+                                className="flex items-center gap-1 py-2 px-2 text-sm text-[#121212] rounded hover:bg-gray-100"
+                                onClick={onFilter}
+                            >
+                                <img src="assets/images/filter.svg" alt="Filter" className="h-4 w-4" />
+                                <span>Filter</span>
+                            </button>
+                            <button 
+                                className="flex items-center gap-1 py-2 px-2 text-sm text-[#121212] rounded hover:bg-gray-100"
+                            >
+                                <img src="assets/images/arrow-autofit.svg" alt="Cell view" className="h-4 w-4" />
+                                <span>Cell view</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2">
+                            <button 
+                                className="flex items-center gap-1 py-2 px-2 text-sm text-[#545454] rounded hover:bg-gray-100 border border-[#EEEEEE]"
+                                onClick={onImport}
+                            >
+                                <img src="assets/images/arrow-download.svg" alt="Import" className="h-4 w-4" />
+                                <span>Import</span>
+                            </button>
+                            <button 
+                                className="flex items-center gap-1 py-2 px-2 text-sm text-[#545454] rounded hover:bg-gray-100 border border-[#EEEEEE]"
+                                onClick={onExport}
+                            >
+                                <img src="assets/images/arrow-upload.svg" alt="Export" className="h-4 w-4" />
+                                <span>Export</span>
+                            </button>
+                            <button 
+                                className="flex items-center gap-1 py-2 px-2 text-sm text-[#545454] rounded hover:bg-gray-100 border border-[#EEEEEE]"
+                                onClick={onShare}
+                            >
+                                <img src="assets/images/share.svg" alt="Share" className="h-4 w-4" />
+                                <span>Share</span>
+                            </button>
+                        </div>
+                        <button 
+                            className="flex items-center gap-1 py-2 px-6 text-sm text-white rounded bg-[#4B6A4F] hover:bg-[#3E5741]"
+                            onClick={onNewAction}
+                        >
+                            <img src="assets/images/arrow-split.svg" alt="New Action" className="h-4 w-4" />
+                            <span>New Action</span>
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+        
+        const ViewTabs = ({ activeView, setView }) => {
+            const views = ['All Orders', 'Pending', 'Reviewed', 'Arrived'];
+            
+            return (
+                <div className="flex items-center px-8 border-b border-[#EEEEEE] bg-white">
+                    {views.map(view => (
+                        <button 
+                            key={view}
+                            className={`py-2.5 px-4 text-base ${activeView === view ? 'view-active' : 'text-[#757575]'}`}
+                            onClick={() => setView(view)}
+                        >
+                            {view}
+                        </button>
+                    ))}
+                    <button className="p-2 ml-1 hover:bg-gray-100 rounded">
+                        <img src="assets/images/plus.svg" alt="Add view" className="h-4 w-4" />
+                    </button>
+                </div>
+            );
+        };
+        
+        const SpreadsheetTable = ({ 
+            jobs, 
+            showFields,
+            sortColumn,
+            sortDirection,
+            onSort
+        }) => {
+            const renderSortIndicator = (column) => {
+                if (sortColumn === column) {
+                    return sortDirection === 'asc' ? ' ↑' : ' ↓';
+                }
+                return '';
+            };
+            
+            const renderStatus = (status) => {
+                let statusClass = '';
+                
+                switch(status) {
+                    case 'In-process':
+                        statusClass = 'status-in-process';
+                        break;
+                    case 'Need to start':
+                        statusClass = 'status-need-to-start';
+                        break;
+                    case 'Complete':
+                        statusClass = 'status-complete';
+                        break;
+                    case 'Blocked':
+                        statusClass = 'status-blocked';
+                        break;
+                    default:
+                        statusClass = '';
+                }
+                
+                return (
+                    <div className={`px-2 py-1 rounded-full ${statusClass} inline-block`}>
+                        {status}
+                    </div>
+                );
+            };
+            
+            const renderPriority = (priority) => {
+                let priorityClass = '';
+                
+                switch(priority) {
+                    case 'High':
+                        priorityClass = 'priority-high';
+                        break;
+                    case 'Medium':
+                        priorityClass = 'priority-medium';
+                        break;
+                    case 'Low':
+                        priorityClass = 'priority-low';
+                        break;
+                    default:
+                        priorityClass = '';
+                }
+                
+                return <span className={`font-semibold ${priorityClass}`}>{priority}</span>;
+            };
+            
+            return (
+                <div className="flex-grow overflow-auto">
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr className="bg-[#EEEEEE]">
+                                <th className="p-2 text-left w-12 border-r-2 border-[#CCCCc]">#</th>
+                                <th 
+                                    className="p-2 text-left text-[#757575] font-semibold text-xs cursor-pointer border-r-2 border-[#CCCCC]"
+                                    onClick={() => onSort('title')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        <img src="assets/images/briefcase.svg" alt="Job" className="h-4 w-4" />
+                                        <span>Job Request{renderSortIndicator('title')}</span>
+                                    </div>
+                                </th>
+                                <th 
+                                    className="p-2 text-left text-[#757575] font-semibold text-xs cursor-pointer border-r-2 border-[#CCCCC]"
+                                    onClick={() => onSort('submittedDate')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        <img src="assets/images/calendar.svg" alt="Date" className="h-4 w-4" />
+                                        <span>Submitted{renderSortIndicator('submittedDate')}</span>
+                                    </div>
+                                </th>
+                                <th 
+                                    className="p-2 text-left text-[#757575] font-semibold text-xs cursor-pointer border-r-2 border-[#CCCCC]"
+                                    onClick={() => onSort('status')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        <img src="assets/images/chevron-circle.svg" alt="Status" className="h-4 w-4" />
+                                        <span>Status{renderSortIndicator('status')}</span>
+                                    </div>
+                                </th>
+                                <th 
+                                    className="p-2 text-left text-[#757575] font-semibold text-xs cursor-pointer border-r-2 border-[#CCCCC]"
+                                    onClick={() => onSort('submitter')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        <img src="assets/images/person.svg" alt="Person" className="h-4 w-4" />
+                                        <span>Submitter{renderSortIndicator('submitter')}</span>
+                                    </div>
+                                </th>
+                                <th 
+                                    className="p-2 text-left text-[#757575] font-semibold text-xs cursor-pointer border-r-2 border-[#CCCCC]"
+                                    onClick={() => onSort('url')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        <img src="assets/images/globe.svg" alt="URL" className="h-4 w-4" />
+                                        <span>URL{renderSortIndicator('url')}</span>
+                                    </div>
+                                </th>
+                                {showFields && (
+                                    <>
+                                        <th className="p-2 text-left bg-[#E8F0E9] border-b border-[#EEEEEE]">
+                                            <div className="text-[#666C66] font-semibold text-xs flex items-center gap-1">
+                                                <img src="assets/images/emoji.svg" alt="Assigned" className="h-4 w-4" />
+                                                <span>Assigned</span>
+                                            </div>
+                                        </th>
+                                        <th 
+                                            className="p-2 text-left bg-[#EAE3FC] text-[#645C7F] font-semibold text-xs cursor-pointer border-r-2 border-[#CCCCC]"
+                                            onClick={() => onSort('priority')}
+                                        >
+                                            <span>Priority{renderSortIndicator('priority')}</span>
+                                        </th>
+                                        <th 
+                                            className="p-2 text-left bg-[#EAE3FC] text-[#645C7F] font-semibold text-xs cursor-pointer border-r-2 border-[#CCCCC]"
+                                            onClick={() => onSort('dueDate')}
+                                        >
+                                            <span>Due Date{renderSortIndicator('dueDate')}</span>
+                                        </th>
+                                        <th 
+                                            className="p-2 text-left bg-[#FFE9E0] text-[#8C6B61] font-semibold text-xs cursor-pointer border-r-2 border-[#CCCCC]"
+                                            onClick={() => onSort('estimatedValue')}
+                                        >
+                                            <span>Est. Value{renderSortIndicator('estimatedValue')}</span>
+                                        </th>
+                                    </>
+                                )}
+                                <th className="p-2 text-left bg-[#EEEEEE] ">
+                                    <div className="flex justify-center">
+                                        <img src="assets/images/add.svg" alt="Add column" className="h-4 w-4" />
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+  {Array.from({ length: 14 }).map((_, index) => {
+    const job = jobs[index];
+    return (
+      <tr key={index} className="border-b border-[#EEEEEE] hover:bg-gray-50">
+        <td className="p-2 text-[#757575] text-center border-r-2 border-[#CCCCc]">{index + 1}</td>
+        <td className="p-2 text-[#121212] text-xs border-r-2 border-[#CCCCc]">{job?.title || ''}</td>
+        <td className="p-2 text-[#121212] text-xs border-r-2 border-[#CCCCc]">{job?.submittedDate || ''}</td>
+        <td className="p-2 text-[#121212] text-xs border-r-2 border-[#CCCCc]">
+          {job ? renderStatus(job.status) : ''}
+        </td>
+        <td className="p-2 text-[#121212] text-xs border-r-2 border-[#CCCCc]">{job?.submitter || ''}</td>
+        <td className="p-2 text-[#121212] text-xs border-r-2 border-[#CCCCc]">{job?.url || ''}</td>
+        {showFields && (
+          <>
+            <td className="p-2 text-[#121212] text-xs bg-white border-r-2 border-[#CCCCc]">{job?.assignedTo || ''}</td>
+            <td className="p-2 text-center text-xs bg-white border-r-2 border-[#CCCCc]">
+              {job ? renderPriority(job.priority) : ''}
+            </td>
+            <td className="p-2 text-[#121212] text-xs text-right bg-white border-r-2 border-[#CCCCc]">{job?.dueDate || ''}</td>
+            <td className="p-2 text-[#121212] text-xs bg-white border-r-2 border-[#CCCCc]">
+              <div className="flex items-center justify-end gap-1">
+                <span>{job?.estimatedValue || ''}</span>
+                {job && <span className="text-[#AFAFAF]">₹</span>}
+              </div>
+            </td>
+          </>
+        )}
+        <td className="p-2"></td>
+      </tr>
+    );
+  })}
+</tbody>
+
+                    </table>
+                </div>
+            );
+        };
+
+        // Render the React application
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>
